@@ -1,0 +1,19 @@
+"Find The Dot" program with Realtime PRU sister program for the Beagle Bone Green
+
+This program uses shared memory between the main CPU and the PRU to coordinate RGB LED illumination, and Joystick detection
+
+Written in majority by me, referencing course material from Brian Frasers CMPT433 Class
+
+At initialization, the BBG will select a "point", represented by an Accelerometer Vector and set that as the goal
+
+The user will then orient the BBG, until the accelerometer Vector is "very close" to the goal vector
+
+The user will then actuate the joystick, to take a "shot" on goal and try and "hit" the "point"
+
+To guide the user, the BBG will change the color and RGB LED illumination on its NeoPixel RGB strip that has been
+wired in for the purpose of this program by me using GPIO
+
+This program is threaded, and uses Atomics and shared memory for inter process communication
+
+
+

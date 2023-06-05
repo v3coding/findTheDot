@@ -30,13 +30,11 @@
 #define AyH 0x2B
 #define AzL 0x2C
 #define AzH 0x2D
-#define REG_DIRA 0x00 // Zen Red uses: 0x02
-#define REG_DIRB 0x01 // Zen Red uses: 0x03
-#define REG_OUTA 0x14 // Zen Red uses: 0x00
-#define REG_OUTB 0x15 // Zen Red uses: 0x01
+#define REG_DIRA 0x00
+#define REG_DIRB 0x01
+#define REG_OUTA 0x14
+#define REG_OUTB 0x15
 
-// General PRU Memomry Sharing Routine
-// ----------------------------------------------------------------
 #define PRU_ADDR 0x4A300000 // Start of PRU memory Page 184 am335x TRM
 #define PRU_LEN 0x80000 // Length of PRU memory
 #define PRU0_DRAM 0x00000 // Offset to DRAM
@@ -44,7 +42,6 @@
 #define PRU_SHAREDMEM 0x10000 // Offset to shared memory
 #define PRU_MEM_RESERVED 0x200 // Amount used by stack and heap
 
-// Convert base address to each memory section
 #define PRU0_MEM_FROM_BASE(base) ( (base) + PRU0_DRAM + PRU_MEM_RESERVED)
 #define PRU1_MEM_FROM_BASE(base) ( (base) + PRU1_DRAM + PRU_MEM_RESERVED)
 #define PRUSHARED_MEM_FROM_BASE(base) ( (base) + PRU_SHAREDMEM)
@@ -55,7 +52,6 @@ volatile void* getPruMmapAddr(void) {
         perror("ERROR: could not open /dev/mem");
         exit(EXIT_FAILURE);
     }
-// Points to start of PRU memory.
     volatile void* pPruBase = mmap(0, PRU_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, fd, PRU_ADDR);
     if (pPruBase == MAP_FAILED) {
         perror("ERROR: could not map memory");
@@ -89,7 +85,6 @@ void* playSounds(void* args){
     FILE *pFile;
     while(threadData->programRunning){
         if(threadData->hitSound){
-
             pFile = fopen("/dev/bone/pwm/0/a/period", "w");
 	        fprintf(pFile, "%d", 1000000);
 	        fclose(pFile);
@@ -129,11 +124,9 @@ void* playSounds(void* args){
             pFile = fopen("/dev/bone/pwm/0/a/enable", "w");
             fprintf(pFile, "%d", 0);
             fclose(pFile);
-
             threadData->hitSound = 0;
         }
         if(threadData->missSound){
-
             pFile = fopen("/dev/bone/pwm/0/a/period", "w");
 	        fprintf(pFile, "%d", 1000000);
 	        fclose(pFile);
@@ -160,7 +153,6 @@ void* playSounds(void* args){
             pFile = fopen("/dev/bone/pwm/0/a/enable", "w");
             fprintf(pFile, "%d", 0);
             fclose(pFile);
-
             threadData->missSound = 0;
         }
         sleepForMs(50);
@@ -169,18 +161,14 @@ void* playSounds(void* args){
 }
 
 void initGPIO(void) {
-	//Export both pins
 	FILE *pFile = fopen("/sys/class/gpio/export", "w");
 	if(pFile == NULL) {
 		printf("ERROR: Unable to open export file.\n");
 		exit(1);
 	}
-
 	fprintf(pFile, "%d", 61);
 	fprintf(pFile, "%d", 44);
 	fclose(pFile);
-	
-	//Set direction of both pins
 	pFile = fopen("/sys/class/gpio/gpio61/direction", "w");
 	if(pFile == NULL) {
 		printf("ERROR: Unable to open gpio61/direction\n");
@@ -195,8 +183,6 @@ void initGPIO(void) {
 	}
 	fprintf(pFile, "%s", "out");
 	fclose(pFile);
-
-	//Turn on both digits
 	pFile = fopen("/sys/class/gpio/gpio61/value", "w");
 	if(pFile == NULL) {
 		printf("ERROR: Unable to open gpio61/value\n");
@@ -211,8 +197,6 @@ void initGPIO(void) {
 	}
 	fprintf(pFile, "%d", 1);
 	fclose(pFile);
-
-
 }
 
 static int initI2cBus(char* bus, int address){
@@ -238,17 +222,12 @@ static void writeI2cReg(int i2cFileDesc, unsigned char regAddr,unsigned char val
 
 void runCommand(char* command)
 {
-    // Execute the shell command (output into pipe)
     FILE *pipe = popen(command, "r");
-    // Ignore output of the command; but consume it
-    // so we don't get an error when closing the pipe.
     char buffer[1024];
     while (!feof(pipe) && !ferror(pipe)) {
     if (fgets(buffer, sizeof(buffer), pipe) == NULL)
     break;
-    // printf("--> %s", buffer); // Uncomment for debugging
     }
-    // Get the exit code from the pipe; non-zero is an error:
     int exitCode = WEXITSTATUS(pclose(pipe));
     if (exitCode != 0) {
         perror("Unable to execute command:");
@@ -258,13 +237,11 @@ void runCommand(char* command)
 }
 
 static unsigned char readI2cReg(int i2cFileDesc, unsigned char regAddr){
-// To read a register, must first write the address
     int res = write(i2cFileDesc, &regAddr, sizeof(regAddr));
     if (res != sizeof(regAddr)) {
         perror("I2C: Unable to write to i2c register.");
         exit(1);
     }
-// Now read the value and return it
     char value = 0;
     res = read(i2cFileDesc, &value, sizeof(value));
     if (res != sizeof(value)) {
@@ -289,9 +266,7 @@ void configureInput(){
 }
 
 int readJoystick(int joystick){
-    //1 is up, 2 is down
     FILE *pFile;
-
     if(joystick == 1){
         pFile = fopen("/sys/class/gpio/gpio26/value", "r");
     }
@@ -309,8 +284,6 @@ int readJoystick(int joystick){
     }
     char buff[1024];
     fgets(buff, 1024, pFile);
-    //printf("Read : '%s'",buff);
-    //printf("First Bit = %c\n",buff[0]);
     fclose(pFile);
     if(buff[0] == '0'){
         return 1;
@@ -322,7 +295,6 @@ void* printData(void* args){
     threadController* threadData = (threadController*) args;
     volatile void *pPruBase = getPruMmapAddr();
     volatile sharedMemStruct_t *pSharedPru0 = PRU0_MEM_FROM_BASE(pPruBase);
-
     while(threadData->programRunning){
         printf("X%f Y%f |TOTAL SCORE %d| HIT:%d HITX:%d HITY:%d | TiltLeft: %d TiltRight: %d | TiltUp: %d TiltDown: %d |  PointX: %f PointY: %f\n",threadData->X,threadData->Y,threadData->hits, threadData->completeHit,threadData->hitX,threadData->hitY,threadData->tiltLeft,threadData->tiltRight,threadData->tiltUp,threadData->tiltDown,threadData->pointX,threadData->pointY);
         sleepForMs(500);
@@ -341,19 +313,15 @@ void* monitorAccelerometerX(void* args){
     float xPoint = threadData->pointX;
     threadData->tiltLeft = 0;
     threadData->tiltRight = 0;
-
     unsigned char buffx[9];
     for(int i = 0; i < 9; i++){
         buffx[i] = 0;
     }
 
-    //left x is negative -1, right x is positive 1
-    while(threadData->programRunning){
-        
+    while(threadData->programRunning){  
        *buffx = readI2cReg(threadData->i2cFileDesc,0x28);
        *(buffx + 4) = readI2cReg(threadData->i2cFileDesc,0x29);
         int16_t x = (buffx[4] << 8) | (buffx[0]);
-
         float intermediateX = (float) x;
         float xscaled = (float) (intermediateX / 16000);
         if(xscaled > 1){
@@ -362,7 +330,6 @@ void* monitorAccelerometerX(void* args){
         if(xscaled < -1){
             xscaled = -1;
         }
-
         float xDiff = fabs(xscaled - xPoint);
         if(xDiff <= 0.1f){
             threadData->hitX = 1;
@@ -376,7 +343,6 @@ void* monitorAccelerometerX(void* args){
         else{
             threadData->completeHit = 0;
         }
-
         if(xscaled < xPoint){
             threadData->tiltLeft = 0;
             threadData->tiltRight = 1;
@@ -388,23 +354,19 @@ void* monitorAccelerometerX(void* args){
             pSharedPru0->left = 1;
             pSharedPru0->right = 0;
         }
-
         atomic_store(&threadData->X,xscaled);
         sleepForMs(100);
     }
     pthread_exit(0);
 }
 
-//up is -1 down is 1
 void* monitorAccelerometerY(void* args){
     volatile void *pPruBase = getPruMmapAddr();
     volatile sharedMemStruct_t *pSharedPru0 = PRU0_MEM_FROM_BASE(pPruBase);
     threadController* threadData = (threadController*) args;
     float yPoint = threadData->pointY;
-    
     threadData->tiltUp = 0;
     threadData->tiltDown = 0;
-
     unsigned char buffy[9];
         for(int i = 0; i < 9; i++){
         buffy[i] = 0;
@@ -414,7 +376,6 @@ void* monitorAccelerometerY(void* args){
        *buffy = readI2cReg(threadData->i2cFileDesc,0x2A);
        *(buffy + 4) = readI2cReg(threadData->i2cFileDesc,0x2B);
         int16_t y = (buffy[4] << 8) | (buffy[0]);
-
         float intermediateY = (float) y;
         float yscaled = (float) (intermediateY / 16000);
         if(yscaled > 1){
@@ -423,7 +384,6 @@ void* monitorAccelerometerY(void* args){
         if(yscaled < -1){
             yscaled = -1;
         }
-
         float yDiff = fabs(yscaled - yPoint);
         if(yDiff <= 0.1f){
             threadData->hitY = 1;
@@ -437,9 +397,7 @@ void* monitorAccelerometerY(void* args){
         else{
             threadData->completeHit = 0;
         }
-        
         if(threadData->completeHit == 0){
-
         if(yscaled < yPoint){
             threadData->tiltUp = 0;
             threadData->tiltDown = 1;
@@ -474,7 +432,6 @@ void* monitorAccelerometerY(void* args){
                 pSharedPru0->height = 7;
             }
         }
-
         }
         else{
             pSharedPru0->height = 8;
@@ -489,9 +446,7 @@ void* monitorAccelerometerY(void* args){
                 threadData->missSound = 1;
             }
         }
-
         atomic_store(&threadData->Y,yscaled);
-        //threadData->programRunning = pSharedPru0->quit;
         if(!pSharedPru0->quit){
             threadData->programRunning = 0;
         }
@@ -502,7 +457,6 @@ void* monitorAccelerometerY(void* args){
 
 
 void startProgram(threadController* threadArgument){
-    //Configure I2C Pins
     srand(time(NULL));
     runCommand("config-pin p9_18 i2c");
 	runCommand("config-pin p9_17 i2c");
@@ -510,30 +464,22 @@ void startProgram(threadController* threadArgument){
     runCommand("config-pin p8_15 pruin");
     runCommand("config-pin p8_16 pruin");
     runCommand("config-pin p9_22 pwm");
-
     initGPIO();
 
     threadArgument->i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
-   // unsigned char outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x00);
-   //printf("Validating accelerometer memory value at 0x20 is set to 0x00 which is 'off', value = %u\n",outputValue);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x27);
-   // outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
-   // printf("Validating accelerometer memory value at 0x20 is set to 0x01 which is 'on', value = %u\n",outputValue);
    threadArgument->X = 0;
    threadArgument->Y = 0;
    threadArgument->Z = 0;
    threadArgument->hits = 0;
    threadArgument->missSound = 0;
    threadArgument->hitSound = 0;
-
     threadArgument->pointX = ((float)rand()/(float)(RAND_MAX)) - 0.5f;
     threadArgument->pointY = ((float)rand()/(float)(RAND_MAX)) - 0.5f;
-
     pthread_t tid;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    //Set "Running" boolean to indicate program is to run
     threadArgument->programRunning = 1;
 
     //Start acceleromter monitoring threads
@@ -543,18 +489,13 @@ void startProgram(threadController* threadArgument){
     pthread_create(&tid, &attr, monitorAccelerometerY, threadArgument);
     threadArgument->threadIDs[1] = tid;
 
-     pthread_create(&tid, &attr, playSounds, threadArgument);
-     threadArgument->threadIDs[2] = tid;
+    pthread_create(&tid, &attr, playSounds, threadArgument);
+    threadArgument->threadIDs[2] = tid;
 
     //Start data printing thread
     pthread_create(&tid, &attr, printData, threadArgument);
     threadArgument->threadIDs[3] = tid;
 
-    // //monitorJoystick thread
-    // pthread_create(&tid, &attr, monitorJoystick, threadArgument);
-    // threadArgument->threadIDs[5] = tid;
-
-    //Wait for threads to gracefully return
     waitForProgramEnd(threadArgument);
 }
 
